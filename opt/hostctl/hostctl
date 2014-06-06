@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php
+
+const CONFIG_FILE_PATH = '/etc/hostctl/hostctl.ini';
+require __DIR__ . '/include/functions.php';
+
+$config = hostctl_load_config(CONFIG_FILE_PATH, [
+    'nginx_conf_dir' => '/etc/nginx/conf.d',
+    'fpm_conf_dir'   => '/etc/php/fpm.d',
+    'hosts_dir'      => '/usr/share/hosts',
+    'templates_dir'  => '/etc/hostctl',
+    'sock_dir'       => '/var/local/php-fpm',
+    'debug_mode'     => 0,
+]);
+
+$errors = (int) ($config['debug_mode'] || $argv[0] === '--debug');
+error_reporting(-$errors);
+ini_set('display_errors', $errors);
+
+array_shift($argv);
+$action = array_shift($argv);
+fetch_args($argv);
+
+$className = "Actions\\" . strtolower($action);
+if (class_exists($className) && is_subclass_of($className, 'Action')) {
+    /** @var Action $action */
+    $action = new $className($config);
+    $action->run(new Environment);
+} else {
+    echo "Unknown action: $action\n";
+}
